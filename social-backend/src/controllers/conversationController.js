@@ -38,7 +38,7 @@ const createChat = async (req, res) => {
             ]
         })
         return res.status(200).json({ message: "Đoạn chat đã được tạo", conversation: fullConversation });
-    } catch(error) {
+    } catch (error) {
         console.error("Lỗi khi tạo đoạn chat", error.message);
         return res.status(500).json({ message: error.message });
     }
@@ -47,7 +47,7 @@ const createChat = async (req, res) => {
 //tạo cuộc trò chuyện nhóm khi thêm thành viên mới
 const createGroupChat = async (req, res) => {
     const userId = req.userId;
-    const {name, memberIds} = req.body;
+    const { name, memberIds } = req.body;
     try {
         if (!name || !memberIds) {
             return res.status(400).json({ message: "Thiếu thông tin" });
@@ -60,10 +60,10 @@ const createGroupChat = async (req, res) => {
             type: 'group',
             name: name,
         })
-        
+
         // Lọc bỏ userId khỏi member id
         const otherMemberIds = memberIds.filter(id => id !== userId);
-        
+
         // Thêm các thành viên khác vào conversation_members với role 'member'
         if (otherMemberIds.length > 0) {
             await ConversationMembers.bulkCreate(otherMemberIds.map(memberId => ({
@@ -72,14 +72,14 @@ const createGroupChat = async (req, res) => {
                 role: 'member',
             })));
         }
-        
+
         // Thêm userId  vào conversation_members với role 'admin'
         await ConversationMembers.create({
             conversationId: conversation.id,
             userId: userId,
             role: 'admin',
         });
-        
+
         //trả về đoạn chat
         const fullConversation = await Conversation.findByPk(conversation.id, {
             include: [
@@ -107,7 +107,8 @@ const getConversations = async (req, res) => {
         //danh sách đoạn chat của user đó
         const userConversations = await ConversationMembers.findAll({
             where: {
-                userId: userId
+                userId: userId,
+                deletedAt: null
             }
         });
         console.log("userConversations", userConversations);
@@ -142,6 +143,7 @@ const getConversations = async (req, res) => {
             const members = c.members.filter(m => m.userId !== userId);
             const otherPerson = members.find(m => m.userId !== userId);
             const lastMessage = c.messages[0]?.content || null;
+
             return {
                 id: c.id,
                 name: c.name,
@@ -268,10 +270,38 @@ const findOrCreateChat = async (req, res) => {
         return res.status(500).json({ message: "Lỗi hệ thống" });
     }
 }
+//xóa đoạn chat
+const deleteConversation = async (req, res) => {
+    const userId = req.userId;
+    const conversationId = req.params.conversationId;
+    try {
+        //kiểm tra đoạn chat có tồn tại hay không
+        const conversation = await Conversation.findByPk(conversationId);
+        if (!conversation) {
+            return res.status(404).json({ message: "Đoạn chat không tồn tại" });
+        }
+        const conversationMember = await ConversationMembers.findOne({
+            where: { conversationId, userId }
+        });
+        if (!conversationMember) {
+            return res.status(403).json({ message: "Bạn không có quyền xóa đoạn chat này" });
+        }
+        await conversationMember.update({
+            deletedAt: new Date(),
+            deletedAtConversation: new Date()
+        });
+        return res.status(200).json({ message: "Đoạn chat đã được xóa" });
+    }
+    catch (error) {
+        console.error("Lỗi khi xóa đoạn chat", error);
+        return res.status(500).json({ message: "Lỗi hệ thống" });
+    }
+}
 
 module.exports = {
     createChat,
     getConversations,
     findOrCreateChat,
     createGroupChat,
+    deleteConversation,
 }

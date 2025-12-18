@@ -10,4 +10,6 @@ router.get('/', middleware, conversationController.getConversations);
 router.post('/find-or-create', middleware, conversationController.findOrCreateChat);
 //tạo cuộc trò chuyện nhóm
 router.post('/create-group', middleware, conversationController.createGroupChat);
+//xóa đoạn chat
+router.delete('/delete/:conversationId', middleware, conversationController.deleteConversation);
 module.exports = router;

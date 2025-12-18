@@ -159,7 +159,7 @@ export default function MyPost() {
       socket.off('comment_deleted');
       socket.off('comment_updated');
     }
-  }, [socket]);
+  }, [socket, post]);
 
   useEffect(() => {
     fetchPost();

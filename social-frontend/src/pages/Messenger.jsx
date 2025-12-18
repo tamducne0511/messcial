@@ -244,7 +244,22 @@ export default function Messenger() {
       });
     }
   }
-
+  //xóa đoạn chat
+  const handleDeleteConversation = async (conversationId) => {
+    try {
+      const res = await axios.delete(`http://localhost:5001/api/conversations/delete/${conversationId}`, {
+        headers: { Authorization: "Bearer " + localStorage.getItem("accessToken") },
+      });
+      console.log("res delete conversation:", res.data);
+      alert(res.data.message);
+      loadConversations();
+      return res.data;
+    }
+    catch (error) {
+      console.error("Lỗi khi xóa đoạn chat", error);
+      alert("Lỗi khi xóa đoạn chat");
+    }
+  }
   //tìm kiếm bạn bè fe
   const searchFriends = async (searchUserTerm) => {
     const searchTerm = searchUserTerm.toLowerCase().trim();
@@ -483,6 +498,7 @@ export default function Messenger() {
         Authorization: "Bearer " + localStorage.getItem("accessToken"),
       },
     });
+    console.log("res conversations:", res.data.result);
     setConversations(res.data.result);
   };
   useEffect(() => {
@@ -571,6 +587,7 @@ export default function Messenger() {
                   <p className="text-xs text-gray-500 truncate">{conversation.lastMessage || "Không có tin nhắn"}</p>
                 </div>
                 <span className="text-xs text-gray-400">{formatDate(conversation.otherPerson?.createdAt)}</span>
+                <button className="p-1 hover:bg-gray-100 rounded-full" onClick={() => handleDeleteConversation(conversation.id)}><Trash className="w-5 h-5 text-gray-600" /></button>
               </div>
             ))}
           </div>

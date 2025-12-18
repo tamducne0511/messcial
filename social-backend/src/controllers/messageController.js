@@ -28,6 +28,18 @@ const sendMessage = async (req, res) => {
             content,
             messageType: type || 'text'
         });
+        //cập nhật lastMessageId của conversation
+        await Conversation.update({
+            lastMessageId: message.id
+        }, {
+            where: { id: conversationId }
+        });
+        //cập nhật deletedAt của conversation members
+        await ConversationMembers.update({
+            deletedAt: null
+        }, {
+            where: { conversationId }
+        });
         //lấy thông tin đầy đủ của message với sender
         const messageWithSender = await Message.findByPk(message.id, {
             include: [{
@@ -77,10 +89,18 @@ const getMessages = async (req, res) => {
         if (!conversationMembers || conversationMembers.length === 0) {
             return res.status(403).json({ message: "Bạn không có quyền xem tin nhắn trong đoạn chat này" });
         }
+        //lấy những tin nhắn sau thời gian deletedAtConversation của conversation members
+        const whereClause = {
+            conversationId
+          };
+        
+          if (conversationMembers.deletedAtConversation) {
+            whereClause.createdAt = {
+              [Op.gt]: conversationMembers.deletedAtConversation
+            };
+          }
         const messages = await Message.findAll({
-            where: {
-                conversationId,
-            },
+            where: whereClause,
             order: [['createdAt', 'ASC']],
             include: [
                 {

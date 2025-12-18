@@ -14,6 +14,17 @@ const ConversationMembers = sequelize.define('ConversationMembers', {
         allowNull: false,
         defaultValue: 'member'
     }
+    ,deletedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        defaultValue: null,
+    }
+    ,//thời gian xóa đoạn chat
+    deletedAtConversation: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        defaultValue: null,
+    }
 }, {
     timestamps: true,
     tableName: 'conversation_members'

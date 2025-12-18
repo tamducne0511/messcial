@@ -6,6 +6,7 @@ import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 import { Link } from "react-router-dom";
 import defaultImage from "../assets/images.jpeg"
+import { io } from "socket.io-client";
 const reactions = [
   { type: "like", icon: "👍" },
   { type: "love", icon: "❤️" },
@@ -71,12 +72,122 @@ export default function MyPage() {
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [friends, setFriends] = useState([]);
+  const [socket, setSocket] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [currentPostId, setCurrentPostId] = useState(null);
   const navigate = useNavigate();
   const { id } = useParams();
 
   useEffect(() => {
     fetchPosts(page, true);
   }, [id]);
+
+  //connect socket
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+    //lấy thông tin user để có userId
+    const fetchUserInfo = async () => {
+      try {
+        const res = await axios.get("http://localhost:5001/api/user/me", {
+          headers: { Authorization: "Bearer " + token },
+        });
+        const userId = res.data.user.id;
+        setCurrentUserId(userId);
+        //kết nối socket
+        const newSocket = io("http://localhost:5001", {
+          auth: {
+            token: token,
+          },
+          transports: ["websocket", "polling"],
+        });
+        newSocket.on("connect", () => {
+          console.log("connected to socket", newSocket.id);
+          newSocket.emit("user_connect", userId);
+        })
+        newSocket.on('disconnect', () => {
+          console.log("disconnected from socket", newSocket.id);
+        })
+        setSocket(newSocket);
+        return () => {
+          newSocket.close();
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy thông tin user", error);
+      }
+    }
+    fetchUserInfo();
+  }, []);
+
+  //join room comments
+  useEffect(() => {
+    if (!socket) return;
+    socket.emit('join_comments', currentPostId);
+    console.log("joined comments", currentPostId);
+    return () => {
+      socket.emit('leave_comments', currentPostId);
+      console.log("left comments", currentPostId);
+    }
+  }, [socket, currentPostId]);
+
+  //bắt sự kiện socket
+  useEffect(() => {
+    if (!socket) return;
+    socket.on('new_comment', (data) => {
+      const { comment, postId } = data;
+      if (!comment || !postId) return;
+
+      setPosts(prev => prev.map(post => {
+        if (post.id === postId) {
+          const commentExists = post.comments?.some(c => c.id === comment.id);
+          if (commentExists) return post;
+
+          return {
+            ...post,
+            comments: [...(post.comments || []), comment].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+            commentsCount: (post.commentsCount || 0) + 1
+          };
+        }
+        return post;
+      }));
+    })
+    socket.on('comment_deleted', (data) => {
+      const { commentId, postId } = data;
+      if (!commentId || !postId) return;
+      setPosts(prev => prev.map(post => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            comments: post.comments.filter(c => c.id !== commentId),
+            commentsCount: (post.commentsCount || 0) - 1,
+          }
+        }
+        return post;
+      }));
+    })
+    socket.on('comment_updated', (data) => {
+      const { comment, postId } = data;
+      if (!comment || !postId) return;
+      setPosts(prev => prev.map(post => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            comments: post.comments.map(c => c.id === comment.id ? comment : c),
+          }
+        }
+        return post;
+      }));
+      setCommentInput((prev) => ({
+        ...prev,
+        [`${postId}-comment-${comment.id}`]: comment.content,
+      }));
+    })
+    return () => {
+      socket.off('new_comment');
+      socket.off('comment_deleted');
+      socket.off('comment_updated');
+    }
+  }, [socket]);
 
   const fetchPosts = async (pageNum = 1, replace = false) => {
     try {
@@ -939,7 +1050,10 @@ export default function MyPage() {
                       </div>
                     )}
                   </div>
-                  <button onClick={() => setActiveCommentBox(activeCommentBox === post.id ? null : post.id)} className="flex-1 py-2 flex items-center justify-center gap-1 text-gray-600 hover:bg-gray-100">
+                  <button onClick={() => {
+                    setActiveCommentBox(activeCommentBox === post.id ? null : post.id);
+                    setCurrentPostId(post.id);
+                  }} className="flex-1 py-2 flex items-center justify-center gap-1 text-gray-600 hover:bg-gray-100">
                     <MessageCircle className="w-5 h-5" /> Bình luận
                   </button>
                   <button className="flex-1 py-2 flex items-center justify-center gap-1 text-gray-600 hover:bg-gray-100">
