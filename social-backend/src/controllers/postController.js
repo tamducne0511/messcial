@@ -646,19 +646,6 @@ const sharePost = async (req, res) => {
         if (!post) {
             return res.status(404).json({ message: "Bài post không tồn tại" });
         }
-        //Kiểm tra phải bạn bè hay không
-        const friend = await Friend.findOne({
-            where: {
-                status: FRIEND_STATUS.ACCEPTED,
-                [Op.or]: [
-                    { userId: userId, friendId: post.userId },
-                    { userId: post.userId, friendId: userId }
-                ]
-            }
-        });
-        if (!friend) {
-            return res.status(403).json({ message: "Bạn không phải bạn bè của người dùng này" });
-        }
         //Tạo bài post mới
         const newPost = await Post.create({
             content: content,
