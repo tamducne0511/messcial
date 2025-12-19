@@ -256,13 +256,24 @@ const getPosts = async (req, res) => {
                     model: Comment,
                     attributes: ['id', 'content', 'parentId', 'userId', 'createdAt'],
                     include: [{ model: User, attributes: ['id', 'displayName', 'avatar'] },
-                        { model: Reaction, attributes: ['id', 'type', 'userId'] }
+                    { model: Reaction, attributes: ['id', 'type', 'userId'] }
                     ],
-                    // nếu muốn chỉ lấy 3 comment mới nhất:
+                    // nếu muốn chỉ lấy 3 comment mới nhất
                     // limit: 3,
                     // separate: true // xem note bên dưới
                 },
-                { model: Reaction, attributes: ['id', 'type', 'userId'] }
+                { model: Reaction, attributes: ['id', 'type', 'userId'] },
+                {
+                    model: Post, attributes: ['id', 'content', 'privacy', 'createdAt'], as: 'SharedPost',
+                    include: [
+                        { model: User, attributes: ['id', 'displayName', 'avatar'] },
+                        { model: PostMedia, attributes: ['id', 'type', 'url'] },
+                        { model: Comment, attributes: ['id', 'content', 'parentId', 'userId', 'createdAt'],
+                            include: [{ model: User, attributes: ['id', 'displayName', 'avatar'] },
+                        ]},
+                        { model: Reaction, attributes: ['id', 'type', 'userId'] }
+                    ]
+                }
             ],
             order: [['createdAt', 'DESC']],
             limit,
@@ -284,7 +295,7 @@ const getPosts = async (req, res) => {
                 content: c.content,
                 createdAt: c.createdAt,
                 parentId: c.parentId,
-                reactions : c.Reactions.map(r => ({
+                reactions: c.Reactions.map(r => ({
                     id: r.id,
                     type: r.type,
                     userId: r.userId
@@ -319,7 +330,15 @@ const getPosts = async (req, res) => {
                 myReaction,
                 comments,
                 commentsCount: comments.length,
-                shares: post.shares || 0 // nếu có trường shares
+                shares: post.shares || 0, // nếu có trường shares
+                sharedPost: post.SharedPost ? {
+                    id: post.SharedPost.id,
+                    content: post.SharedPost.content,
+                    createdAt: post.SharedPost.createdAt,
+                    user: post.SharedPost.User,
+                    media: post.SharedPost.PostMedia,
+                    reactionsTotal: post.SharedPost.Reactions?.length || 0,
+                  } : null
             };
         }));
 
@@ -486,7 +505,7 @@ const getAllPost = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
     const search = req.query.search || '';
-    
+
     // Chỉ tạo whereClause khi có search term
     const whereClause = {};
     if (search.trim()) {
@@ -554,7 +573,7 @@ const getAllPost = async (req, res) => {
                     content: c.content,
                     createdAt: c.createdAt,
                     parentId: c.parentId,
-                    reactions : c.Reactions.map(r => ({
+                    reactions: c.Reactions.map(r => ({
                         id: r.id,
                         type: r.type,
                         userId: r.userId
@@ -590,14 +609,14 @@ const getAllPost = async (req, res) => {
 };
 
 //lấy tất cả ảnh và video theo userId
-const getAllImages = async(req,res)=>{
+const getAllImages = async (req, res) => {
     const userId = req.params.userId;
     console.log(userId);
     try {
         //lấy tất cả video và ảnh trong các bài post của user
         const posts = await Post.findAll({
             where: { userId: userId },
-            include: [ 
+            include: [
                 { model: PostMedia, attributes: ["id", "type", "url"] }
             ]
         });
@@ -618,6 +637,42 @@ const getAllImages = async(req,res)=>{
     }
 }
 
+//chia sẻ bài posst
+const sharePost = async (req, res) => {
+    const userId = req.userId;
+    const { sharedPostId, privacy, content } = req.body;
+    try {
+        const post = await Post.findByPk(sharedPostId);
+        if (!post) {
+            return res.status(404).json({ message: "Bài post không tồn tại" });
+        }
+        //Kiểm tra phải bạn bè hay không
+        const friend = await Friend.findOne({
+            where: {
+                status: FRIEND_STATUS.ACCEPTED,
+                [Op.or]: [
+                    { userId: userId, friendId: post.userId },
+                    { userId: post.userId, friendId: userId }
+                ]
+            }
+        });
+        if (!friend) {
+            return res.status(403).json({ message: "Bạn không phải bạn bè của người dùng này" });
+        }
+        //Tạo bài post mới
+        const newPost = await Post.create({
+            content: content,
+            privacy: privacy,
+            sharedPostId: sharedPostId,
+            userId: userId
+        });
+        return res.status(200).json({ message: "Bài post đã được chia sẻ", postId: newPost.id });
+    } catch (error) {
+        console.error("Lỗi chia sẻ bài post:", error);
+        res.status(500).json({ message: "Lỗi hệ thống" });
+    }
+}
+
 module.exports = {
     createPost,
     getPosts,
@@ -626,5 +681,6 @@ module.exports = {
     getPostDetails,
     getUserPosts,
     getAllPost,
-    getAllImages
+    getAllImages,
+    sharePost
 };

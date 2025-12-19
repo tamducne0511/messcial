@@ -6,7 +6,7 @@ const Session = require('./Session');
 const PostMedia = require('./PostMedia');
 const Friend = require('./Friend');
 const Notification = require('./Notification');
-const Message = require('./Message');   
+const Message = require('./Message');
 const Conversation = require('./Conversation');
 const ConversationMembers = require('./ConversationMembers')
 // User
@@ -25,4 +25,7 @@ Message.belongsTo(User, { foreignKey: 'senderId', as: 'sender' });
 ConversationMembers.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 ConversationMembers.belongsTo(Conversation, { foreignKey: 'conversationId', as: 'conversation' });
 
-module.exports = { User, Session, Post, PostMedia, Comment, Reaction, Friend, Notification, Message, Conversation, ConversationMembers};
+Post.belongsTo(Post, { as: 'SharedPost', foreignKey: 'sharedPostId' });
+Post.hasMany(Post, { as: 'SharedByPosts', foreignKey: 'sharedPostId' });
+
+module.exports = { User, Session, Post, PostMedia, Comment, Reaction, Friend, Notification, Message, Conversation, ConversationMembers };

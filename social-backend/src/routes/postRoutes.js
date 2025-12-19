@@ -19,5 +19,7 @@ router.get('/user/:userId', middleware, postController.getUserPosts)
 router.get('/all', postController.getAllPost )
 //lấy tất cả ảnh và video theo userId
 router.get('/images/:userId', middleware, postController.getAllImages)
+//chia sẻ bài post
+router.post('/share', middleware, postController.sharePost);
 
 module.exports = router;

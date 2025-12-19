@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { MoreHorizontal, ThumbsUp, MessageCircle, Share2, Send} from "lucide-react";
+import { MoreHorizontal, ThumbsUp, MessageCircle, Share2, Send } from "lucide-react";
 import Navbar from "@/components/navbar";
 import axios from "axios";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import defaultImage from "../assets/images.jpeg";
 import { io } from "socket.io-client";
 import CreatePost from "@/components/createPost";
+import ShareComponent from "@/components/shareComponent";
 const reactions = [
   { type: "like", icon: "👍" },
   { type: "love", icon: "❤️" },
@@ -62,7 +63,7 @@ export default function PostList() {
   //thêm state đê hiển thị emoji trong text
   const [emojiText, setEmojiText] = useState({});
   const [showCreateModal, setShowCreateModal] = useState(false);
-
+  const [showShareModal, setShowShareModal] = useState(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -75,6 +76,12 @@ export default function PostList() {
   useEffect(() => {
     if (searchParams.get("create") === "true") {
       setShowCreateModal(true);
+      setSearchParams({}); // Xóa query param
+    }
+  }, [searchParams, setSearchParams]);
+  useEffect(() => {
+    if (searchParams.get("share") === "true") {
+      setShowShareModal(true);
       setSearchParams({}); // Xóa query param
     }
   }, [searchParams, setSearchParams]);
@@ -474,7 +481,7 @@ export default function PostList() {
       callback(postId);
     }
   }
-  
+
 
   //Đoạn này đang chưa hoàn thiện
   const renderCommentTree = (comments, postId, parentId = null, level = 0) => {
@@ -624,6 +631,33 @@ export default function PostList() {
                 ))}
               </div>
             )}
+            {post.sharedPost && (
+              <>
+              <div className="bg-gray-100 p-3 rounded-lg shadow mb-4 border border-gray-200 max-w-[700px] mx-auto cursor-pointer" onClick={() => navigate(`/myPost/${post.sharedPost.id}`)}>
+                <div className="flex items-center justify-between p-3">
+                  <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate(`/myPage/${post.sharedPost.user?.id}`)}>
+                    <img src={post.sharedPost.user?.avatar || defaultImage} className="w-10 h-10 rounded-full object-cover" />
+                    <div>
+                      <p className="font-semibold text-[15px] hover:underline">{post.sharedPost.user?.displayName}</p>
+                      <p className="text-xs text-gray-500 flex items-center gap-1">{new Date(post.sharedPost.createdAt).toLocaleDateString('vi-VN')}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="px-3 py-2">
+                  <p className="text-[15px] whitespace-pre-wrap">{post.sharedPost.content}</p>
+                </div>
+                {post.sharedPost.media && post.sharedPost.media.length > 0 && (
+                  <div className={post.sharedPost.media.length > 1 ? "grid grid-cols-2 gap-0.5" : ""}>
+                    {post.sharedPost.media.map((file, idx) => file.type === "image" ? (
+                      <img key={idx} src={file.url} className="w-full object-cover" style={{ maxHeight: "400px" }} />
+                    ) : (
+                      <video key={idx} src={file.url} className="w-full" controls />
+                    ))}
+                  </div>
+                )}
+              </div>
+              </>
+            )}
 
             {/* Stats */}
             <div className="px-3 py-2 flex justify-between text-sm text-gray-500 border-b">
@@ -655,7 +689,16 @@ export default function PostList() {
               } className="flex-1 py-2 flex items-center justify-center gap-1 text-gray-600 hover:bg-gray-100">
                 <MessageCircle className="w-5 h-5" /> Bình luận
               </button>
-              <button className="flex-1 py-2 flex items-center justify-center gap-1 text-gray-600 hover:bg-gray-100">
+              <button
+                onClick={() => {
+                  setShowShareModal(true);
+                  // Lưu postId để truyền vào ShareComponent
+                  const url = new URL(window.location);
+                  url.searchParams.set('postId', post.id);
+                  window.history.replaceState({}, '', url);
+                }}
+                className="flex-1 py-2 flex items-center justify-center gap-1 text-gray-600 hover:bg-gray-100"
+              >
                 <Share2 className="w-5 h-5" /> Chia sẻ
               </button>
             </div>
@@ -695,6 +738,21 @@ export default function PostList() {
         onClose={() => setShowCreateModal(false)}
         onSuccess={() => {
           // Refresh posts sau khi tạo bài viết thành công
+          fetchPosts(1, true);
+        }}
+      />
+      <ShareComponent
+        isOpen={showShareModal}
+        postId={searchParams.get("postId")}
+        onClose={() => {
+          setShowShareModal(false);
+          // Xóa postId khỏi URL
+          const url = new URL(window.location);
+          url.searchParams.delete('postId');
+          window.history.replaceState({}, '', url);
+        }}
+        onSuccess={() => {
+          // Refresh posts sau khi chia sẻ bài viết thành công
           fetchPosts(1, true);
         }}
       />

@@ -1,7 +1,7 @@
 import './App.css'
 import React from "react"
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
-
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom"
+import ShareComponent from './components/shareComponent'
 import Login from "./pages/Login"
 import Register from "./pages/Register"
 import ProtectedRoute from './pages/ProtectedRoute'
@@ -16,6 +16,13 @@ import AllVideos from './components/allVideo'
 import ListSearch from './components/ListSearch'
 import Messenger from './pages/Messenger'
 import FriendCommonList from './components/friendCommonList'
+
+// Component để redirect share với postId
+const ShareRedirect = () => {
+  const { postId } = useParams();
+  return <Navigate to={`/?share=true&postId=${postId}`} replace />;
+};
+
 function App() {
 
   return (
@@ -40,7 +47,14 @@ function App() {
             </ProtectedRoute>
           }
         />
-
+        <Route
+          path="/share/:postId"
+          element={
+            <ProtectedRoute>
+              <ShareRedirect />
+            </ProtectedRoute>
+          }
+        /> 
         <Route
           path="/friendlist"
           element={

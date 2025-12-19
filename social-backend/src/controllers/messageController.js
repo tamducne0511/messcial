@@ -90,17 +90,15 @@ const getMessages = async (req, res) => {
             return res.status(403).json({ message: "Bạn không có quyền xem tin nhắn trong đoạn chat này" });
         }
         //lấy những tin nhắn sau thời gian deletedAtConversation của conversation members
-        const whereClause = {
-            conversationId
-          };
-        
-          if (conversationMembers.deletedAtConversation) {
-            whereClause.createdAt = {
-              [Op.gt]: conversationMembers.deletedAtConversation
-            };
-          }
+        const conversationTimestamp = conversationMembers?.[0]?.deletedAtConversation || 0;
+        console.log("conversationTimestamp", conversationTimestamp);
         const messages = await Message.findAll({
-            where: whereClause,
+            where: {
+                conversationId,
+                createdAt: {
+                    [Op.gt]: conversationTimestamp
+                }
+            },
             order: [['createdAt', 'ASC']],
             include: [
                 {
@@ -268,7 +266,7 @@ const markMessagesAsRead = async (req, res) => {
             userId: userId
         });
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             message: "Đã đánh dấu tất cả tin nhắn là đã đọc",
             lastReadMessageId: lastMessage?.id || null
         });
