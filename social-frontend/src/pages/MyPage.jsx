@@ -1026,6 +1026,33 @@ export default function MyPage() {
                     ))}
                   </div>
                 )}
+                {post.sharedPost && (
+                  <>
+                    <div className="bg-gray-100 p-3 rounded-lg shadow mb-4 border border-gray-200 max-w-[700px] mx-auto cursor-pointer" onClick={() => navigate(`/myPost/${post.sharedPost.id}`)}>
+                      <div className="flex items-center justify-between p-3">
+                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate(`/myPage/${post.sharedPost.user?.id}`)}>
+                          <img src={post.sharedPost.user?.avatar || defaultImage} className="w-10 h-10 rounded-full object-cover" />
+                          <div>
+                            <p className="font-semibold text-[15px] hover:underline">{post.sharedPost.user?.displayName}</p>
+                            <p className="text-xs text-gray-500 flex items-center gap-1">{new Date(post.sharedPost.createdAt).toLocaleDateString('vi-VN')}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="px-3 py-2">
+                        <p className="text-[15px] whitespace-pre-wrap">{post.sharedPost.content}</p>
+                      </div>
+                      {post.sharedPost.media && post.sharedPost.media.length > 0 && (
+                        <div className={post.sharedPost.media.length > 1 ? "grid grid-cols-2 gap-0.5" : ""}>
+                          {post.sharedPost.media.map((file, idx) => file.type === "image" ? (
+                            <img key={idx} src={file.url} className="w-full object-cover" style={{ maxHeight: "400px" }} />
+                          ) : (
+                            <video key={idx} src={file.url} className="w-full" controls />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 {/*Trạng thái số lượng */}
                 <div className="px-3 py-2 flex justify-between text-sm text-gray-500 border-b">

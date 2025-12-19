@@ -4,8 +4,8 @@ const bcrypt = require('bcrypt')
 const crypto = require('crypto')
 const { Sequelize, Op } = require('sequelize');
 require("dotenv").config();
-const Access_Token_TTL = '60m';
-const Refresh_Token_TTL = 7 * 24 * 60 * 60 * 1000;
+const Access_Token_TTL = '200m';
+const Refresh_Token_TTL = 20 * 24 * 60 * 60 * 1000;
 
 const signUp = async (req, res) => {
     try {

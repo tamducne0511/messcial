@@ -380,6 +380,16 @@ const getUserPosts = async (req, res) => {
                     include: [{ model: User, attributes: ["id", "displayName", "avatar"] }],
                 },
                 { model: Reaction, attributes: ["id", "type", "userId"] },
+                { model: Post, attributes: ['id', 'content', 'privacy', 'sharedPostId', 'createdAt'], as: 'SharedPost',
+                    include: [
+                        { model: User, attributes: ['id', 'displayName', 'avatar'] },
+                        { model: PostMedia, attributes: ['id', 'type', 'url'] },
+                        { model: Comment, attributes: ['id', 'content', 'parentId', 'userId', 'createdAt'],
+                            include: [{ model: User, attributes: ['id', 'displayName', 'avatar'] },
+                        ]},
+                        { model: Reaction, attributes: ['id', 'type', 'userId'] }
+                    ]
+                }
             ],
             order: [["createdAt", "DESC"]],
             limit,
@@ -433,6 +443,14 @@ const getUserPosts = async (req, res) => {
                 comments,
                 commentsCount: comments.length,
                 shares: post.shares || 0,
+                sharedPost: post.SharedPost ? {
+                    id: post.SharedPost.id,
+                    content: post.SharedPost.content,
+                    createdAt: post.SharedPost.createdAt,
+                    user: post.SharedPost.User,
+                    media: post.SharedPost.PostMedia,
+                    reactionsTotal: post.SharedPost.Reactions?.length || 0,
+                } : null
             };
         });
 

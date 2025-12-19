@@ -1,6 +1,7 @@
 const Reaction = require('../models/Reaction');
 const Post = require('../models/Post');
 const Comment = require('../models/Comment');
+const User = require('../models/User');
 const { createNotification } = require('../utils/notificationHelper');
 //Thêm 1 phản ứng
 const reactPost = async (req, res) => {
@@ -196,11 +197,37 @@ const deleteReactComment = async (req, res) => {
     }
 }
 
+//Danhg sách người dùng react post
+const getUsersReactedToPost = async (req, res) => {
+    const postId = req.params.postId;
+    try{
+        //Kiểm tra bài post có tồn tại hay không
+        const post = await Post.findByPk(postId,{
+            attributes: ['id']
+        })
+        if(!post){
+            return res.status(404).json({ message: "Bài viết không tồn tại" })
+        }
+        //Lấy danh sách người dùng react post
+        const { rows: reactions, count: totalUsers } = await Reaction.findAndCountAll({
+            where: { postId },
+            include: [{ model: User, attributes: ['id', 'displayName', 'avatar'] }]
+        })
+        //Lấy danh sách người dùng react post
+        const users = reactions.map(r => r.User);
+        return res.status(200).json({ users, totalUsers })
+    }catch(error){
+        console.error("Lỗi khi lấy danh sách người dùng react post:", error)
+        return res.status(500).json({ message: "Lỗi hệ thống" })
+    }
+}
+
 module.exports = {
     reactPost,
     reactComment,
     countReactionsByPost,
     countReactionsByComment,
     deleteReact,
-    deleteReactComment
+    deleteReactComment,
+    getUsersReactedToPost
 };

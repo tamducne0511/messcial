@@ -13,4 +13,6 @@ router.get('/comment/:commentId/count', reactionController.countReactionsByComme
 router.delete('/post/:postId', reactionController.deleteReact)
 //xóa react comment
 router.delete('/comment/:commentId', reactionController.deleteReactComment)
+//Lấy danh sách người dùng react post
+router.get('/post/:postId/users', reactionController.getUsersReactedToPost);
 module.exports = router;

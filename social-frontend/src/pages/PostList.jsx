@@ -66,6 +66,8 @@ export default function PostList() {
   const [showShareModal, setShowShareModal] = useState(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [showReactions, setShowReactions] = useState({});
+  const [reactionUsers, setReactionUsers] = useState({});
 
   //fetch posts khi component mount
   useEffect(() => {
@@ -218,6 +220,20 @@ export default function PostList() {
       setLoading(false);
     }
   };
+  const fetchReactions = async (postId) => {
+    try {
+      const res = await axios.get(`http://localhost:5001/api/reactions/post/${postId}/users`, {
+        headers: { Authorization: "Bearer " + localStorage.getItem("accessToken") },
+      });
+      console.log("res reactions:", res.data);
+      setReactionUsers(prev => ({
+        ...prev,
+        [postId]: res.data.users || []
+      }));
+    } catch (err) {
+      console.error("Lỗi khi lấy danh sách người dùng react:", err);
+    }
+  }
 
   useEffect(() => {
     const handleScroll = () => {
@@ -633,35 +649,66 @@ export default function PostList() {
             )}
             {post.sharedPost && (
               <>
-              <div className="bg-gray-100 p-3 rounded-lg shadow mb-4 border border-gray-200 max-w-[700px] mx-auto cursor-pointer" onClick={() => navigate(`/myPost/${post.sharedPost.id}`)}>
-                <div className="flex items-center justify-between p-3">
-                  <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate(`/myPage/${post.sharedPost.user?.id}`)}>
-                    <img src={post.sharedPost.user?.avatar || defaultImage} className="w-10 h-10 rounded-full object-cover" />
-                    <div>
-                      <p className="font-semibold text-[15px] hover:underline">{post.sharedPost.user?.displayName}</p>
-                      <p className="text-xs text-gray-500 flex items-center gap-1">{new Date(post.sharedPost.createdAt).toLocaleDateString('vi-VN')}</p>
+                <div className="bg-gray-100 p-3 rounded-lg shadow mb-4 border border-gray-200 max-w-[700px] mx-auto cursor-pointer" onClick={() => navigate(`/myPost/${post.sharedPost.id}`)}>
+                  <div className="flex items-center justify-between p-3">
+                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate(`/myPage/${post.sharedPost.user?.id}`)}>
+                      <img src={post.sharedPost.user?.avatar || defaultImage} className="w-10 h-10 rounded-full object-cover" />
+                      <div>
+                        <p className="font-semibold text-[15px] hover:underline">{post.sharedPost.user?.displayName}</p>
+                        <p className="text-xs text-gray-500 flex items-center gap-1">{new Date(post.sharedPost.createdAt).toLocaleDateString('vi-VN')}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="px-3 py-2">
-                  <p className="text-[15px] whitespace-pre-wrap">{post.sharedPost.content}</p>
-                </div>
-                {post.sharedPost.media && post.sharedPost.media.length > 0 && (
-                  <div className={post.sharedPost.media.length > 1 ? "grid grid-cols-2 gap-0.5" : ""}>
-                    {post.sharedPost.media.map((file, idx) => file.type === "image" ? (
-                      <img key={idx} src={file.url} className="w-full object-cover" style={{ maxHeight: "400px" }} />
-                    ) : (
-                      <video key={idx} src={file.url} className="w-full" controls />
-                    ))}
+                  <div className="px-3 py-2">
+                    <p className="text-[15px] whitespace-pre-wrap">{post.sharedPost.content}</p>
                   </div>
-                )}
-              </div>
+                  {post.sharedPost.media && post.sharedPost.media.length > 0 && (
+                    <div className={post.sharedPost.media.length > 1 ? "grid grid-cols-2 gap-0.5" : ""}>
+                      {post.sharedPost.media.map((file, idx) => file.type === "image" ? (
+                        <img key={idx} src={file.url} className="w-full object-cover" style={{ maxHeight: "400px" }} />
+                      ) : (
+                        <video key={idx} src={file.url} className="w-full" controls />
+                      ))}
+                    </div>
+                  )}
+                </div>
               </>
             )}
 
             {/* Stats */}
-            <div className="px-3 py-2 flex justify-between text-sm text-gray-500 border-b">
-              <span>{post.reactionsTotal > 0 && `👍 ${post.reactionsTotal}`}</span>
+            <div className="px-3 py-2 flex justify-between text-sm text-gray-500 border-b cursor-pointer">
+              <span 
+                onMouseEnter={() => {
+                  setShowReactions(prev => ({ ...prev, [post.id]: true }));
+                  if (!reactionUsers[post.id] || reactionUsers[post.id].length === 0) {
+                    fetchReactions(post.id);
+                  }
+                }}
+                onMouseLeave={() => {
+                  setShowReactions(prev => ({ ...prev, [post.id]: false }));
+                }}
+                className="relative"
+              >
+                {post.reactionsTotal > 0 && `👍 ${post.reactionsTotal}`}
+                {showReactions[post.id] && (
+                  <div className="absolute bottom-full left-0 mb-2 bg-white shadow-lg rounded-lg p-3 w-64 z-50 border">
+                    {
+                      reactionUsers[post.id] && reactionUsers[post.id].length > 0 ? (
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {reactionUsers[post.id].map(u => (
+                            <div key={u.id} className="flex items-center gap-2">
+                              <img src={u.avatar || defaultImage} className="w-8 h-8 rounded-full object-cover" />
+                              <span className="text-sm font-medium">{u.displayName}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center text-gray-500 py-2">Không có người react</div>
+                      )
+                    }
+                  </div>
+                )}
+              </span>
               <div className="flex gap-3">
                 <span>{post.commentsCount > 0 && `${post.commentsCount} bình luận`}</span>
                 <span>{post.shares > 0 && `${post.shares} chia sẻ`}</span>
